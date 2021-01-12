@@ -1,5 +1,6 @@
 ﻿using System.Threading.Tasks;
 using System.Collections.Generic;
+using System;
 
 namespace Maersk.Sorting.Api
 {
@@ -9,5 +10,11 @@ namespace Maersk.Sorting.Api
 
         //Queue incoming jobs
         Task<IEnumerable<SortJob>> QueueJob(SortJob job);
+
+        Task<SortJob> GetJob(Guid jobId);
+
+        Task<SortJob[]> GetJobs();
+
+        Task BackgroundProcess(SortJob pendingJob);
     } 
 }

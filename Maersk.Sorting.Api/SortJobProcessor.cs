@@ -60,5 +60,70 @@ namespace Maersk.Sorting.Api
             
             return sortJob.ToList();
         }
+
+        /// <summary>
+        /// Query the Dictionay for a job
+        /// </summary>
+        /// <param name="jobId">Guid of the job</param>
+        /// <returns>Job</returns>
+        public async Task<SortJob> GetJob(Guid jobId)
+        {
+            object j = new object();
+
+            await Task.Run(() =>{
+                j = ApplicationCache.AppCache[jobId];
+            });
+
+            var job = (SortJob)j;
+
+            return new SortJob(
+                id: job.Id,
+                status: job.Status,
+                duration: job.Duration,
+                input: job.Input,
+                output: job.Output);
+        }
+
+        /// <summary>
+        /// Query the dictionary for all the jobs in the queue
+        /// </summary>
+        /// <returns>List of jobs</returns>
+        public async Task<SortJob[]> GetJobs(){
+
+            List<SortJob> allJobs = new List<SortJob>();
+
+            await Task.Run(() =>{
+                 foreach(var item in ApplicationCache.AppCache.Keys)
+                {
+                    allJobs.Add(ApplicationCache.AppCache[item]);
+                }
+            });
+           
+            return allJobs.ToArray();
+        }
+
+        public async Task BackgroundProcess(SortJob pendingJob){
+
+            object j = new object();
+
+            var completedJob = await Process(pendingJob);
+
+            await Task.Run(() =>{
+                j = ApplicationCache.AppCache[completedJob.Id];
+            });
+
+             var job = (SortJob)j;
+
+              var updatedJob = new SortJob(
+                id: Guid.NewGuid(),
+                status: SortJobStatus.Completed,
+                duration: completedJob.Duration,
+                input: job.Input,
+                output: completedJob.Output);
+
+            await Task.Run(() =>{
+                ApplicationCache.AppCache[job.Id] = updatedJob; //Update the job in inmemory cache dictionary
+            });
+        }
     }
 }

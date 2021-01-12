@@ -2,6 +2,7 @@
 using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using Hangfire;
 
 namespace Maersk.Sorting.Api.Controllers
 {
@@ -35,7 +36,6 @@ namespace Maersk.Sorting.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<SortJob>> EnqueueJob(int[] values)
         {
-            // TODO: Should enqueue a job to be processed in the background.
             var pendingJob = new SortJob(
                 id: Guid.NewGuid(),
                 status: SortJobStatus.Pending,
@@ -45,42 +45,21 @@ namespace Maersk.Sorting.Api.Controllers
 
             await _sortJobProcessor.QueueJob(pendingJob);
 
+            BackgroundJob.Enqueue(() => _sortJobProcessor.BackgroundProcess(pendingJob)); //hangfire fire-and-forget
+
             return Ok(pendingJob);
         }
 
         [HttpGet]
         public async Task<ActionResult<SortJob[]>> GetJobs()
         {
-            // TODO: Should return all jobs that have been enqueued (both pending and completed).
-            List<SortJob> allJobs = new List<SortJob>();
-
-            await Task.Run(() =>{
-                 foreach(var item in ApplicationCache.AppCache.Keys)
-                {
-                    allJobs.Add(ApplicationCache.AppCache[item]);
-                }
-            });
-           
-            return allJobs.ToArray();
+            return await _sortJobProcessor.GetJobs();
         }
 
         [HttpGet("{jobId}")]
         public async Task<ActionResult<SortJob>> GetJob(Guid jobId)
         {
-            object j = new object();
-
-            await Task.Run(() =>{
-                j = ApplicationCache.AppCache[jobId];
-            });
-
-            var job = (SortJob)j;
-
-            return new SortJob(
-                id: job.Id,
-                status: job.Status,
-                duration: job.Duration,
-                input: job.Input,
-                output: job.Output);
+            return await _sortJobProcessor.GetJob(jobId);
         }
     }
 }
